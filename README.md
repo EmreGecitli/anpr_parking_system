@@ -38,8 +38,10 @@ Proje PostgreSQL kullanmaktadır.
 
 ## 4. Çevre Değişkenleri (.env) Ayarları
 * Projenin kök dizininde (main.py ile aynı yerde) .env adında yeni bir dosya oluşturun ve içine kendi bilgilerinizi ekleyin:  
+```env
 DB_PASSWORD=veritabani_sifrenizi_buraya_yazin
-PLATE_API_TOKEN=plate_recognizer_api_token_buraya
+PLATE_API_TOKEN=plate_recognizer_api_token_buraya 
+```
 * (Not: Bu dosya .gitignore listesinde olduğu için GitHub'a yüklenmez, her yeni kurulumda yerelde elle oluşturulmalıdır.)
 
 ## 5. Sunucuyu Başlatma
@@ -49,6 +51,6 @@ uvicorn main:app --reload
 
 ## 6. API Uç Noktaları (Endpoints)
 * Sunucu çalıştıktan sonra http://127.0.0.1:8000/docs adresine giderek Swagger UI üzerinden tüm API'yi görsel olarak test edebilirsiniz.
-* POST /scan-plate/: Kameradan gelen fotoğrafı yükler, plakayı yapay zeka ile analiz eder ve veritabanına giriş/çıkış logunu işler.  
-* POST /add-vehicle/: Sisteme manuel olarak yeni bir abone araç kaydeder.  
-* GET /vehicles/: Sistemde kayıtlı olan tüm araçların listesini JSON formatında getirir.  
+* **POST /scan-plate/:** Kameradan gelen fotoğrafı yükler, plakayı yapay zeka ile analiz eder ve veritabanına giriş/çıkış logunu işler.  
+* **POST /add-vehicle/:** Sisteme manuel olarak yeni bir abone araç kaydeder.  
+* **GET /vehicles/:** Sistemde kayıtlı olan tüm araçların listesini JSON formatında getirir.  
