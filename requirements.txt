@@ -1,1 +1,16 @@
-pip install fastapi uvicorn opencv-python easyocr pillow
+fastapi
+uvicorn
+python-multipart
+sqlalchemy
+psycopg2-binary
+alembic
+python-dotenv
+opencv-python
+numpy
+pillow
+ultralytics
+torch
+torchvision
+requests
+basicsr
+realesrgan
