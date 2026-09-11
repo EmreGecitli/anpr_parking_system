@@ -89,8 +89,21 @@ class AdminVehicleUpdate(BaseModel):
 # 4. WEB ARAYÜZÜ VE ANA KULLANICI İŞLEMLERİ
 # ---------------------------------------------------------
 @app.get("/")
-def read_root(request: Request):
-    return templates.TemplateResponse(request=request, name="index.html")
+def read_root(request: Request, db: Session = Depends(get_db)):
+    # Veritabanından fiyatları çek, yoksa varsayılan 50/20 kullan
+    pricing = db.query(models.Pricing).first()
+    first_hour = pricing.first_hour_rate if pricing else 50.0
+    hourly = pricing.hourly_rate if pricing else 20.0
+
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html",
+        context={
+            "request": request,
+            "first_hour": f"{first_hour:.2f}",
+            "hourly": f"{hourly:.2f}"
+        }
+    )
 
 
 @app.post("/scan-plate/")
@@ -136,17 +149,25 @@ async def scan_plate(file: UploadFile = File(...), db: Session = Depends(get_db)
         img_path=file_path
     )
 
+    # Return bloğundan hemen önce güncel fiyatları veritabanından çek
+    pricing = db.query(models.Pricing).first()
+    first_hour = pricing.first_hour_rate if pricing else 50.0
+    hourly = pricing.hourly_rate if pricing else 20.0
+
     return {
         "filename": file.filename,
         "detected_plate": final_plate_to_log,
         "ai_raw_plate": clean_plate,
         "ai_confidence": round(ocr_result["confidence"], 2),
-        "esrgan_used": ocr_result.get("esrgan_used", False),  # <-- YENİ EKLENEN SATIR
+        "esrgan_used": ocr_result.get("esrgan_used", False),
         "vehicle_owner": owner,
         "vehicle_type": v_type,
         "match_ratio": round(highest_ratio, 2),
         "action_status": db_result["status"],
-        "action_message": db_result["message"]
+        "action_message": db_result["message"],
+        # Arayüze güncel fiyatları yolla
+        "first_hour_rate": first_hour,
+        "hourly_rate": hourly
     }
 
 
@@ -173,6 +194,10 @@ def get_all_vehicles(db: Session = Depends(get_db)):
 # ---------------------------------------------------------
 # 5. YÖNETİCİ (ADMIN) İŞLEMLERİ
 # ---------------------------------------------------------
+@app.get("/admin/check/")
+def check_admin(admin: str = Depends(get_current_admin)):
+    return {"status": "success", "message": "Yetki doğrulandı"}
+
 @app.post("/admin/vehicles/")
 def admin_add_vehicle(vehicle: AdminVehicleCreate, db: Session = Depends(get_db),
                       admin: str = Depends(get_current_admin)):
