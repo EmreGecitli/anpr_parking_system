@@ -251,8 +251,11 @@ def process_image(image_path):
         try:
             print("[İŞLEM] Görüntü yapay zeka ile 2 kat büyütülüp netleştiriliyor...")
             upscaled_plate, _ = upsampler.enhance(cropped_plate, outscale=2)
-            cv2.imwrite(os.path.join("static", "uploads", "debug_crop_pass2.jpg"), upscaled_plate)
-            print("[BAŞARI] Görüntü netleştirildi. İkinci okuma yapılıyor...")
+
+            # ESRGAN çıktısının diske kaydedildiğini garanti et
+            save_path = os.path.join("static", "uploads", "debug_crop_pass2.jpg")
+            cv2.imwrite(save_path, upscaled_plate)
+            print(f"[BAŞARI] Netleştirilmiş görsel kaydedildi: {save_path}")
 
             result_pass2 = extract_plate_text(upscaled_plate, pass_num=2)
 
@@ -266,6 +269,9 @@ def process_image(image_path):
                     best_local_result = result_pass2
                 else:
                     print("[BİLGİ] Netleştirme skoru artırmadı. İlk sonuç korundu.")
+
+                # Hangi skor kazanırsa kazansın, ESRGAN'ın çalıştığını sisteme bildir
+                best_local_result["esrgan_used"] = True
         except Exception as e:
             print(f"[HATA] Real-ESRGAN işleme sırasında hata: {e}")
 

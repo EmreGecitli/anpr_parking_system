@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Akıllı Otopark Sistemi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Kaydırma çubuğunu (scrollbar) inceltmek için ufak bir dokunuş */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-light d-flex flex-column vh-100">
+
+    <!-- Üst Menü -->
+    <nav class="navbar navbar-dark bg-dark mb-3">
+        <div class="container-fluid px-4">
+            <span class="navbar-brand mb-0 h1">ANPR Otopark Yönetim Paneli</span>
+            <button class="btn btn-outline-light btn-sm">Admin Girişi</button>
+        </div>
+    </nav>
+
+    <!-- Ana İçerik (Tam Ekran Esnek Yapı) -->
+    <div class="container-fluid px-4 pb-4 flex-grow-1 d-flex flex-column">
+        <div class="row flex-grow-1 m-0">
+
+            <!-- 1. Sol Sütun: Araç Bilgileri -->
+            <div class="col-md-3 ps-0 pe-2 pb-2">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-primary text-white text-center fw-bold">Araç Bilgileri</div>
+                    <div class="card-body fs-5 d-flex flex-column justify-content-center">
+                        <p class="mb-4"><strong>Plaka:</strong> <span id="plate-text" class="text-primary">-</span></p>
+                        <p class="mb-4"><strong>Sahibi:</strong> <span id="owner-text">-</span></p>
+                        <p class="mb-4"><strong>Araç Tipi:</strong> <span id="type-text">-</span></p>
+                        <p class="mb-0"><strong>Giriş Saati:</strong> <span id="time-text">-</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Orta Sütun: Görseller Üstte, Yükleme Altta -->
+            <div class="col-md-6 px-2 pb-2">
+                <div class="card shadow-sm h-100 d-flex flex-column">
+                    <div class="card-header bg-secondary text-white text-center fw-bold">Yapay Zeka Tarama Merkezi</div>
+                    <div class="card-body d-flex flex-column">
+
+                       <!-- Görsellerin Geleceği Alan (Esnek Büyür, Kaydırılabilir) -->
+                        <div id="image-preview-container" class="flex-grow-1 overflow-auto d-flex flex-column align-items-center gap-3 mb-3 p-2 border rounded bg-white">
+                            <span id="placeholder-text" class="text-muted mt-5">Yüklenen görseller ve plaka burada gösterilecektir.</span>
+
+                            <!-- 1. Yüklenen Orijinal Görsel (Üstte Ortada) -->
+                            <img id="original-image" class="img-fluid border rounded shadow-sm" style="max-height: 35vh; display: none;">
+
+                            <!-- 2. Tekli Ham Plaka (ESRGAN Yokken Altta Ortada) -->
+                            <div id="single-plate-container" class="text-center" style="display: none;">
+                                <small class="text-muted d-block mb-1">Tespit Edilen Plaka</small>
+                                <img id="single-cropped-image" class="img-fluid border rounded border-primary shadow-sm" style="max-height: 90px;">
+                            </div>
+
+                            <!-- 3. İkili Plaka Grubu (ESRGAN Devreye Girince Sola ve Sağa Ayrılır) -->
+                            <div id="plates-row" class="d-flex flex-row justify-content-center gap-3 w-100" style="display: none;">
+                                <!-- Soldaki: İlk Kırpılan Plaka -->
+                                <div class="text-center">
+                                    <small class="text-muted d-block mb-1">1. Aşama (Ham)</small>
+                                    <img id="cropped-image" class="img-fluid border rounded border-primary shadow-sm" style="max-height: 90px;">
+                                </div>
+                                <!-- Sağdaki: Real-ESRGAN Netleştirilmiş Plaka -->
+                                <div class="text-center">
+                                    <small class="text-muted d-block mb-1">2. Aşama (ESRGAN)</small>
+                                    <img id="esrgan-image" class="img-fluid border rounded border-warning shadow-sm" style="max-height: 90px;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dosya Yükleme Paneli (mt-auto ile hep en altta kalır) -->
+                        <div class="mt-auto bg-light p-3 border rounded shadow-sm">
+                            <input type="file" id="imageInput" class="form-control mb-2" accept="image/*">
+                            <button class="btn btn-success w-100 fw-bold fs-5" onclick="uploadImage()">Plakayı Oku ve İşle</button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Sağ Sütun: Tarife ve Durum -->
+            <div class="col-md-3 pe-0 ps-2 pb-2 d-flex flex-column gap-3">
+                <div class="card shadow-sm flex-fill">
+                    <div class="card-header bg-info text-dark text-center fw-bold">Güncel Tarife</div>
+                    <div class="card-body d-flex flex-column justify-content-center text-center fs-5" id="tariff-container">
+                        <ul class="list-unstyled mb-0">
+                            <li class="mb-3"><strong>İlk 1 Saat:</strong> 50.00 TL</li>
+                            <li><strong>Ek Saat:</strong> +20.00 TL</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm flex-fill">
+                    <div class="card-header bg-dark text-white text-center fw-bold">Durum Ekranı</div>
+                    <div class="card-body d-flex flex-column justify-content-center text-center">
+                        <div id="action-message" class="alert alert-secondary mb-0 fs-5 fw-bold">
+                            Sistem Hazır. Araç Bekleniyor...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+<script>
+    async function uploadImage() {
+        const fileInput = document.getElementById('imageInput');
+        const file = fileInput.files[0];
+
+        if (!file) {
+            alert("Lütfen önce bir araç fotoğrafı seçin!");
+            return;
+        }
+
+        // Arayüzü temizle ve orijinal resmi göster
+        document.getElementById('placeholder-text').style.setProperty('display', 'none', 'important');
+
+        const originalImg = document.getElementById('original-image');
+        originalImg.src = URL.createObjectURL(file);
+        originalImg.style.setProperty('display', 'block', 'important');
+
+        // Eski görselleri ZORLA gizle (Bootstrap d-flex çakışmasını engeller)
+        document.getElementById('single-plate-container').style.setProperty('display', 'none', 'important');
+        document.getElementById('plates-row').style.setProperty('display', 'none', 'important');
+
+        // Gizli kalmış olabilecek iç resim etiketlerini serbest bırak
+        document.getElementById('cropped-image').style.display = '';
+        document.getElementById('esrgan-image').style.display = '';
+
+        // İşlem bekleniyor mesajı
+        const actionDiv = document.getElementById('action-message');
+        actionDiv.className = "alert alert-warning mb-0 fs-5 fw-bold";
+        actionDiv.innerText = "Yapay Zeka İşliyor... Lütfen Bekleyin.";
+
+        // Veriyi hazırla ve FastAPI'ye gönder
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            const response = await fetch('/scan-plate/', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.status === "Hata") {
+                actionDiv.className = "alert alert-danger mb-0 fs-5 fw-bold";
+                actionDiv.innerText = "Hata: " + data.message;
+                return;
+            }
+
+            // 1. Sol Sütun: Gelen bilgileri ekrana bas
+            document.getElementById('plate-text').innerText = data.detected_plate || "-";
+            document.getElementById('owner-text').innerText = data.vehicle_owner || "-";
+            document.getElementById('type-text').innerText = data.vehicle_type || "-";
+
+            const now = new Date();
+            document.getElementById('time-text').innerText = now.toLocaleTimeString('tr-TR');
+
+            // 2. Sağ Sütun: Renk, Mesaj ve Fatura Durumu
+            actionDiv.innerText = data.action_message;
+            const tariffContainer = document.getElementById('tariff-container');
+
+            if (data.action_status === "IN") {
+                actionDiv.className = "alert alert-success mb-0 fs-5 fw-bold";
+                // Araç girerken standart fiyat listesini göster
+                tariffContainer.innerHTML = `
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-3"><strong>İlk 1 Saat:</strong> 50.00 TL</li>
+                        <li><strong>Ek Saat:</strong> +20.00 TL</li>
+                    </ul>
+                `;
+            } else if (data.action_status === "OUT") {
+                actionDiv.className = "alert alert-info mb-0 fs-5 fw-bold";
+
+                let feeText = "0.00 TL";
+                // Backend'den gelen "Süre: 0.2 dakika" mesajındaki rakamı çek
+                const timeMatch = data.action_message.match(/Süre:\s*([\d.]+)/);
+
+                if (timeMatch) {
+                    const minutes = parseFloat(timeMatch[1]);
+
+                    // Abone Kontrolü (Araç sahibi biliniyorsa ücret alma)
+                    if (data.vehicle_owner !== "Bilinmeyen / Misafir") {
+                        feeText = '<span class="text-success fs-4">ABONE<br><small>(Ücretsiz)</small></span>';
+                    } else {
+                        // Misafir Fiyat Hesaplama: İlk saat 50 TL, sonraki her saat 20 TL
+                        let fee = 50;
+                        if (minutes > 60) {
+                            fee += Math.ceil((minutes - 60) / 60) * 20;
+                        }
+                        feeText = fee.toFixed(2) + " TL";
+                    }
+                }
+
+                // Çıkış yapan araca faturayı büyük puntolarla yansıt
+                tariffContainer.innerHTML = `
+                    <div class="p-2">
+                        <h6 class="text-muted fw-bold mb-2">ÖDENECEK TUTAR</h6>
+                        <h2 class="text-danger fw-bold mb-0">${feeText}</h2>
+                    </div>
+                `;
+            } else {
+                actionDiv.className = "alert alert-danger mb-0 fs-5 fw-bold";
+            }
+
+            // 3. Orta Sütun: Görsellerin Durumuna Göre Yerleşimi
+            const timestamp = new Date().getTime();
+            const singleContainer = document.getElementById('single-plate-container');
+            const platesRow = document.getElementById('plates-row');
+
+            // Python tarafındaki ESRGAN sinyaline veya skora bak
+            if (data.esrgan_used === true || data.ai_confidence < 0.85) {
+                // İkili kutuyu ZORLA aç, tekliyi gizle
+                singleContainer.style.setProperty('display', 'none', 'important');
+                platesRow.style.setProperty('display', 'flex', 'important');
+
+                document.getElementById('cropped-image').src = "/static/uploads/debug_crop_pass1.jpg?t=" + timestamp;
+                document.getElementById('esrgan-image').src = "/static/uploads/debug_crop_pass2.jpg?t=" + timestamp;
+            } else {
+                // Tekli kutuyu ZORLA aç, ikiliyi gizle
+                platesRow.style.setProperty('display', 'none', 'important');
+                singleContainer.style.setProperty('display', 'block', 'important');
+
+                document.getElementById('single-cropped-image').src = "/static/uploads/debug_crop_pass1.jpg?t=" + timestamp;
+            }
+
+        } catch (error) {
+            console.error("Sunucu Hatası:", error);
+            actionDiv.className = "alert alert-danger mb-0 fs-5 fw-bold";
+            actionDiv.innerText = "Sunucu ile iletişim kurulamadı!";
+        }
+    }
+</script>
+</body>
+</html>
