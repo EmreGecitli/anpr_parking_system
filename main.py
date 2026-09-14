@@ -291,3 +291,7 @@ async def robots():
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     return FileResponse("icon/favicon.ico")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8001)
