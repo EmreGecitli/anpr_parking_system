@@ -16,3 +16,4 @@ torchvision
 requests
 basicsr
 realesrgan
+jinja2
