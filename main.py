@@ -17,6 +17,8 @@ import models
 import crud
 
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import PlainTextResponse
+from fastapi.responses import FileResponse
 
 # ---------------------------------------------------------
 # 1. BAŞLANGIÇ AYARLARI VE VERİTABANI BAĞLANTISI
@@ -120,7 +122,7 @@ async def scan_plate(file: UploadFile = File(...), db: Session = Depends(get_db)
     clean_plate = re.sub(r'[^A-Z0-9]', '', ocr_result["plate_text"].upper())
     registered_vehicles = db.query(models.Vehicle).all()
 
-    owner, v_type = "Bilinmeyen / Misafir", "Normal"
+    owner, v_type, is_sub, is_blacklist = "Bilinmeyen / Misafir", "Normal", False, False
     best_match_plate = clean_plate
     highest_ratio = 0.0
 
@@ -133,20 +135,22 @@ async def scan_plate(file: UploadFile = File(...), db: Session = Depends(get_db)
             best_match_plate = db_plate
             owner = getattr(db_vehicle, "owner_name", "Bilinmeyen")
             v_type = getattr(db_vehicle, "vehicle_type", "Normal")
+            is_sub = getattr(db_vehicle, "is_subscriber", False)
+            is_blacklist = getattr(db_vehicle, "is_blacklisted", False)  # Kara liste bilgisini çek
 
-        # %85 eşik değeri barajı geçilemezse misafir araç olarak sıfırla
-        if highest_ratio >= 0.85:
-            final_plate_to_log = best_match_plate
-        else:
-            final_plate_to_log = clean_plate
-            owner = "Bilinmeyen / Misafir"
-            v_type = "Normal"
+    if highest_ratio >= 0.85:
+        final_plate_to_log = best_match_plate
+    else:
+        final_plate_to_log = clean_plate
+        owner, v_type, is_sub, is_blacklist = "Bilinmeyen / Misafir", "Normal", False, False
 
+    # crud fonksiyonuna is_blacklisted bilgisini yolla
     db_result = crud.process_plate_detection(
         db=db,
         plate_text=final_plate_to_log,
         conf_score=str(round(ocr_result["confidence"], 2)),
-        img_path=file_path
+        img_path=file_path,
+        is_blacklisted=is_blacklist
     )
 
     # Return bloğundan hemen önce güncel fiyatları veritabanından çek
@@ -162,10 +166,10 @@ async def scan_plate(file: UploadFile = File(...), db: Session = Depends(get_db)
         "esrgan_used": ocr_result.get("esrgan_used", False),
         "vehicle_owner": owner,
         "vehicle_type": v_type,
+        "is_subscriber": is_sub,  # HTML'e abonelik durumunu gönderiyoruz
         "match_ratio": round(highest_ratio, 2),
         "action_status": db_result["status"],
         "action_message": db_result["message"],
-        # Arayüze güncel fiyatları yolla
         "first_hour_rate": first_hour,
         "hourly_rate": hourly
     }
@@ -265,3 +269,12 @@ def update_api_key(new_token: str = Body(..., embed=True), admin: str = Depends(
         for line in lines:
             file.write(f"PLATE_API_TOKEN={new_token}\n" if line.startswith("PLATE_API_TOKEN=") else line)
     return {"message": "API anahtarı güncellendi."}
+
+@app.get("/robots.txt", response_class=PlainTextResponse)
+async def robots():
+    # Tüm botlara (User-agent: *) sitenin hiçbir yerini (Disallow: /) taramamalarını söyler.
+    return "User-agent: *\nDisallow: /"
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse("icon/favicon.ico")

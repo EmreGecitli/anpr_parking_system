@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Akıllı Otopark Sistemi</title>
+    <link rel="icon" href="/favicon.ico?v=2" type="image/x-icon">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         /* Kaydırma çubuğunu (scrollbar) inceltmek için ufak bir dokunuş */
@@ -132,7 +133,7 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body row g-4 p-4">
-                    <!-- Fiyat Güncelleme -->
+                    <!-- ÜST SATIR: Fiyat Güncelleme -->
                     <div class="col-md-6 border-end">
                         <h6 class="fw-bold text-muted mb-3">Tarife Güncelle</h6>
                         <input type="number" id="priceFirst" class="form-control mb-2" placeholder="İlk 1 Saat Ücreti (TL)">
@@ -142,9 +143,44 @@
                     <!-- Manuel Araç Ekleme -->
                     <div class="col-md-6">
                         <h6 class="fw-bold text-muted mb-3">Yeni Abone Ekle</h6>
-                        <input type="text" id="newPlate" class="form-control mb-2" placeholder="Plaka (Örn: 34ABC123)">
-                        <input type="text" id="newOwner" class="form-control mb-3" placeholder="Araç Sahibi Adı Soyadı">
+                        <input type="text" id="newPlate" class="form-control mb-2" placeholder="Plaka (Örn: 35CKT99)">
+                        <input type="text" id="newOwner" class="form-control mb-2" placeholder="Araç Sahibi Adı Soyadı">
+                        <select id="newType" class="form-select mb-3">
+                            <option value="Binek">Binek</option>
+                            <option value="SUV">SUV</option>
+                            <option value="Yarı Ticari">Yarı Ticari</option>
+                            <option value="Ticari">Ticari</option>
+                            <option value="Panelvan">Panelvan</option>
+                            <option value="Minibüs">Minibüs</option>
+                            <option value="Otobüs">Otobüs</option>
+                            <option value="Kamyonet">Kamyonet</option>
+                            <option value="Kamyon">Kamyon</option>
+                            <option value="Motosiklet">Motosiklet</option>
+                            <option value="Karavan">Karavan</option>
+                            <option value="Diğer">Diğer</option>
+                        </select>
                         <button class="btn btn-primary w-100 fw-bold" onclick="addAdminVehicle()">Sisteme Kaydet</button>
+                    </div>
+
+                    <div class="col-12 mt-4 pt-3 border-top"></div> <!-- Yatay Ayırıcı -->
+
+                    <!-- ALT SATIR: Araç Yönetimi ve API Ayarları -->
+                    <div class="col-md-6 border-end">
+                        <h6 class="fw-bold text-muted mb-3">Araç Yönetimi (Güncelle / Sil)</h6>
+                        <input type="text" id="managePlate" class="form-control mb-2" placeholder="İşlem Yapılacak Plaka">
+                        <select id="manageAction" class="form-select mb-3">
+                            <option value="abone_yap">Abone Yap</option>
+                            <option value="abone_iptal">Aboneliği İptal Et</option>
+                            <option value="kara_liste">Kara Listeye Al</option>
+                            <option value="kara_liste_cikar">Kara Listeden Çıkar</option>
+                            <option value="sil" class="text-danger fw-bold">Aracı Sistemden Tamamen Sil</option>
+                        </select>
+                        <button class="btn btn-danger w-100 fw-bold" onclick="manageVehicle()">İşlemi Uygula</button>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="fw-bold text-muted mb-3">API Ayarları</h6>
+                        <input type="text" id="apiKey" class="form-control mb-3" placeholder="Yeni Plate Recognizer Token">
+                        <button class="btn btn-dark w-100 fw-bold" onclick="updateApiKey()">API Anahtarını Kaydet</button>
                     </div>
                 </div>
             </div>
@@ -232,7 +268,7 @@
                 if (timeMatch) {
                     const minutes = parseFloat(timeMatch[1]);
 
-                    if (data.vehicle_owner !== "Bilinmeyen / Misafir") {
+                    if (data.is_subscriber === true) {
                         feeText = '<span class="text-success fs-4">ABONE<br><small>(Ücretsiz)</small></span>';
                     } else {
                         // Dinamik Fiyat Hesaplama
@@ -250,7 +286,17 @@
                         <h2 class="text-danger fw-bold mb-0">${feeText}</h2>
                     </div>
                 `;
-            } else {
+            } else if (data.action_status === "BLACKLISTED") {
+                actionDiv.className = "alert alert-danger mb-0 fs-5 fw-bold";
+
+                // Sağ taraftaki fiyat kutusunu büyük bir tehlike işaretine çevir
+                tariffContainer.innerHTML = `
+                    <div class="p-2 text-center">
+                        <h1 class="text-danger fw-bold mb-0" style="font-size: 3rem;">⚠️</h1>
+                        <h5 class="text-danger fw-bold mt-2">GİRİŞ YASAK</h5>
+                    </div>
+                `; }
+            else {
                 actionDiv.className = "alert alert-danger mb-0 fs-5 fw-bold";
             }
 
@@ -281,6 +327,7 @@
             actionDiv.innerText = "Sunucu ile iletişim kurulamadı!";
         }
     }
+
     async function loginAdmin() {
         const user = document.getElementById('adminUser').value;
         const pass = document.getElementById('adminPass').value;
@@ -321,6 +368,7 @@
             errorDiv.style.display = 'block';
         }
     }
+
     async function updatePricing() {
         const token = sessionStorage.getItem("adminToken");
         const p1 = document.getElementById('priceFirst').value;
@@ -337,8 +385,8 @@
             // Arayüzdeki HTML fiyat listesini de anında güncelle
             document.getElementById('tariff-container').innerHTML = `
                 <ul class="list-unstyled mb-0">
-                    <li class="mb-3"><strong>İlk 1 Saat:</strong> ${p1}.00 TL</li>
-                    <li><strong>Ek Saat:</strong> +${p2}.00 TL</li>
+                    <li class="mb-3"><strong>İlk 1 Saat:</strong> ${parseFloat(p1).toFixed(2)} TL</li>
+                    <li><strong>Ek Saat:</strong> +${parseFloat(p2).toFixed(2)} TL</li>
                 </ul>
             `;
             alert("Yeni tarife başarıyla uygulandı!");
@@ -349,10 +397,12 @@
         const token = sessionStorage.getItem("adminToken");
         const plate = document.getElementById('newPlate').value;
         const owner = document.getElementById('newOwner').value;
+        const vType = document.getElementById('newType').value; // Yeni eklenen araç tipi menüsünden veriyi al
 
         if (!plate || !owner) return alert("Plaka ve Sahip adı zorunludur.");
 
-        const payload = { plate_number: plate, owner_name: owner, vehicle_type: "Binek", is_subscriber: true, is_blacklisted: false };
+        // vehicle_type kısmına vType değişkenini bağladık
+        const payload = { plate_number: plate, owner_name: owner, vehicle_type: vType, is_subscriber: true, is_blacklisted: false };
 
         try {
             const response = await fetch('/admin/vehicles/', {
@@ -368,8 +418,75 @@
                 alert(plate + " plakalı araç abone olarak eklendi!");
                 document.getElementById('newPlate').value = '';
                 document.getElementById('newOwner').value = '';
+                document.getElementById('newType').value = 'Binek'; // Seçimi varsayılana sıfırla
             } else { alert(data.detail); }
         } catch (err) { alert("Bağlantı hatası!"); }
+    }
+
+    async function manageVehicle() {
+        const token = sessionStorage.getItem("adminToken");
+        const plate = document.getElementById('managePlate').value;
+        const action = document.getElementById('manageAction').value;
+
+        if (!plate) return alert("Lütfen işlem yapılacak plakayı girin.");
+
+        try {
+            // Aracı tamamen silme işlemi (DELETE method)
+            if (action === "sil") {
+                const res = await fetch(`/admin/vehicles/${plate}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Basic ' + token }
+                });
+                const data = await res.json();
+                alert(res.ok ? data.message : data.detail);
+            }
+            // Aracın özelliklerini güncelleme işlemi (PUT method)
+            else {
+                let payload = {};
+                if (action === "kara_liste") payload.is_blacklisted = true;
+                if (action === "kara_liste_cikar") payload.is_blacklisted = false;
+                if (action === "abone_yap") payload.is_subscriber = true;
+                if (action === "abone_iptal") payload.is_subscriber = false;
+
+                const res = await fetch(`/admin/vehicles/${plate}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': 'Basic ' + token,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                alert(res.ok ? data.message : data.detail);
+            }
+        } catch (err) { alert("Sunucu ile iletişim kurulamadı!"); }
+    }
+
+    async function updateApiKey() {
+        const token = sessionStorage.getItem("adminToken");
+        const apiKey = document.getElementById('apiKey').value;
+
+        if (!apiKey) return alert("Lütfen geçerli bir API anahtarı girin.");
+
+        try {
+            // API anahtarını JSON formatında güncelleme (PUT method)
+            const res = await fetch('/admin/settings/api-key', {
+                method: 'PUT',
+                headers: {
+                    'Authorization': 'Basic ' + token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ new_token: apiKey })
+            });
+            const data = await res.json();
+
+            if(res.ok) {
+                alert("API Anahtarı başarıyla güncellendi! Yeni okumalarda aktif olacaktır.");
+                document.getElementById('apiKey').value = '';
+            } else {
+                alert(data.detail);
+            }
+        } catch (err) { alert("Sunucu ile iletişim kurulamadı!"); }
     }
 </script>
 </body>
