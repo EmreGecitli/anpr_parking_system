@@ -20,6 +20,14 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import PlainTextResponse
 from fastapi.responses import FileResponse
 
+from dotenv import load_dotenv # Yeni eklenen satır
+
+load_dotenv() # .env dosyasını belleğe yükle
+
+# Güvenli değişkenleri çek
+SECURE_ADMIN_USER = os.getenv("ADMIN_USERNAME", "admin")
+SECURE_ADMIN_PASS = os.getenv("ADMIN_PASSWORD", "Otopark2026!")
+
 # ---------------------------------------------------------
 # 1. BAŞLANGIÇ AYARLARI VE VERİTABANI BAĞLANTISI
 # ---------------------------------------------------------
@@ -48,12 +56,17 @@ def get_db():
 # ---------------------------------------------------------
 # 2. GÜVENLİK (ADMIN AUTH) AYARLARI
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# 2. GÜVENLİK (ADMIN AUTH) AYARLARI
+# ---------------------------------------------------------
 security = HTTPBasic()
 
 
 def get_current_admin(credentials: HTTPBasicCredentials = Depends(security)):
-    correct_username = secrets.compare_digest(credentials.username, "admin")
-    correct_password = secrets.compare_digest(credentials.password, "Otopark2026!")
+    # Şifreler artık kodun içinde değil, .env'den okunan değişkenlerle karşılaştırılıyor
+    correct_username = secrets.compare_digest(credentials.username, SECURE_ADMIN_USER)
+    correct_password = secrets.compare_digest(credentials.password, SECURE_ADMIN_PASS)
+
     if not (correct_username and correct_password):
         raise HTTPException(
             status_code=401,

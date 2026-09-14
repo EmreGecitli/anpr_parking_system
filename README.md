@@ -42,6 +42,8 @@ Proje PostgreSQL kullanmaktadır.
 ```env
 DB_PASSWORD=veritabani_sifrenizi_buraya_yazin
 PLATE_API_TOKEN=plate_recognizer_api_token_buraya 
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=cok_guclu_sifre_123
 ```
 * (Not: Bu dosya .gitignore listesinde olduğu için GitHub'a yüklenmez, her yeni kurulumda yerelde elle oluşturulmalıdır.)
 
